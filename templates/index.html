@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Loop Unroll Advisor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="toolbar">
+        <div>
+          <h1>Loop Unroll Advisor</h1>
+          <p>Analyze C loops with LLVM ScalarEvolution and get unroll recommendations.</p>
+        </div>
+        <button id="analyzeButton" type="button">Analyze Loops</button>
+      </section>
+
+      <section class="workspace">
+        <div class="editor-panel">
+          <label for="codeInput">C Source</label>
+          <textarea id="codeInput" spellcheck="false">void mixed(int n, int *arr, int A[8][8]) {
+  for (int i = 0; i < 16; i++) {
+    arr[i] = i * 2;
+  }
+
+  for (int i = 0; i < n; i++) {
+    arr[i] = 0;
+  }
+
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      A[i][j] = i + j;
+    }
+  }
+}</textarea>
+        </div>
+
+        <div class="results-panel">
+          <div class="results-header">
+            <h2>Results</h2>
+            <span id="statusText">Ready</span>
+          </div>
+          <div id="errorBox" class="error" hidden></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Loop Location</th>
+                  <th>Trip Count</th>
+                  <th>Classification</th>
+                  <th>Recommendation</th>
+                  <th>Rationale</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody">
+                <tr class="empty-row">
+                  <td colspan="5">Run an analysis to see loop recommendations.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>

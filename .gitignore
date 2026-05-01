@@ -1,0 +1,10 @@
+build/
+tests/ir/
+tests/results/
+__pycache__/
+.venv/
+*.pyc
+*.so
+*.dylib
+*.dSYM/
+.DS_Store
