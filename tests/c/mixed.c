@@ -23,3 +23,9 @@ void large(int *arr) {
     arr[i] = 0;
   }
 }
+
+void dead(int *arr) {
+  for (int i = 0; i < 0; i++) {
+    arr[i] = i;
+  }
+}

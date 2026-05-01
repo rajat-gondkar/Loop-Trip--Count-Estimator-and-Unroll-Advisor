@@ -42,7 +42,7 @@ run_case() {
 
   "$CLANG" -O0 -g -Xclang -disable-O0-optnone -S -emit-llvm "$source" -o "$ir"
   "$OPT" -disable-output -load-pass-plugin "$PLUGIN" \
-    -passes="function(mem2reg,instcombine,simplifycfg,loop-simplify,lcssa,indvars),loop-unroll-advisor" \
+    -passes="function(mem2reg,loop-simplify,lcssa,indvars),loop-unroll-advisor" \
     "$ir" >"$result"
   echo "wrote $result"
 }
@@ -51,13 +51,16 @@ run_case fixed
 run_case dynamic
 run_case nested
 run_case large
+run_case dead
 run_case mixed
 
 grep -q "EXACT_STATIC | unroll x4" "$ROOT_DIR/tests/results/fixed.txt"
 grep -q "DYNAMIC | do not unroll" "$ROOT_DIR/tests/results/dynamic.txt"
 grep -q "NESTED | do not unroll" "$ROOT_DIR/tests/results/nested.txt"
 grep -q "1024 | EXACT_STATIC | do not unroll" "$ROOT_DIR/tests/results/large.txt"
+grep -q "0 | DEAD_LOOP | dead loop" "$ROOT_DIR/tests/results/dead.txt"
 grep -q "unroll x4" "$ROOT_DIR/tests/results/mixed.txt"
 grep -q "DYNAMIC | do not unroll" "$ROOT_DIR/tests/results/mixed.txt"
+grep -q "DEAD_LOOP | dead loop" "$ROOT_DIR/tests/results/mixed.txt"
 
 echo "all loop advisor tests passed"

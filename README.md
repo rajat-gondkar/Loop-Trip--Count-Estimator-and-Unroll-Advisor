@@ -48,7 +48,7 @@ The script compiles files in `tests/c`, writes LLVM IR to `tests/ir`, writes pas
 ```bash
 "$LLVM_BIN/clang" -O0 -g -Xclang -disable-O0-optnone -S -emit-llvm tests/c/mixed.c -o /tmp/mixed.ll
 "$LLVM_BIN/opt" -disable-output -load-pass-plugin build/LoopUnrollAdvisor.so \
-  -passes="function(mem2reg,instcombine,simplifycfg,loop-simplify,lcssa,indvars),loop-unroll-advisor" \
+  -passes="function(mem2reg,loop-simplify,lcssa,indvars),loop-unroll-advisor" \
   /tmp/mixed.ll
 ```
 

@@ -105,16 +105,42 @@ label {
   text-transform: uppercase;
 }
 
+.code-editor {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  min-height: 560px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fbfcff;
+}
+
+#lineNumbers {
+  margin: 0;
+  padding: 14px 10px;
+  overflow: hidden;
+  border-right: 1px solid var(--line);
+  color: #8a94a6;
+  background: #f1f4f9;
+  font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  text-align: right;
+  user-select: none;
+}
+
 textarea {
   width: 100%;
   min-height: 560px;
   resize: vertical;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 0;
   padding: 14px;
   color: #111827;
-  background: #fbfcff;
+  background: transparent;
   font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+textarea:focus {
+  outline: none;
 }
 
 .results-panel {

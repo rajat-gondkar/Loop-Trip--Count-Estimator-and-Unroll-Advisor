@@ -280,6 +280,41 @@ tests/c/large.c:2 | 1024 | EXACT_STATIC | do not unroll | Large trip count (1024
 | Nested inner `j < 8` loop | `EXACT_STATIC`, count `8` | `unroll fully` |
 | Large `i < 1024` loop | `EXACT_STATIC`, count `1024` | `do not unroll` |
 
+## Frontend Refinement Update
+
+**Goal:** Improve the web UI based on review feedback.
+
+**Files changed or added:**
+- `templates/index.html`
+- `static/styles.css`
+- `static/app.js`
+- `app.py`
+- `src/LoopUnrollAdvisor.cpp`
+- `tests/c/dead.c`
+- `tests/c/mixed.c`
+- `scripts/run_tests.sh`
+
+**Commands run:**
+- `cmake --build build`
+- `LLVM_BIN=/opt/homebrew/opt/llvm@17/bin ./scripts/run_tests.sh`
+- `.venv/bin/python -m py_compile app.py`
+- Flask test client request against `POST /analyze`
+- `PORT=5001 LLVM_BIN=/opt/homebrew/opt/llvm@17/bin .venv/bin/python app.py`
+- `curl -s http://127.0.0.1:5001/`
+- `curl -s -X POST http://127.0.0.1:5001/analyze ...`
+
+**Results observed:**
+- The code input now has a synchronized line-number gutter.
+- Web summary locations now display as `Line N` instead of full file paths.
+- Statically false loops now appear in the result table as `DEAD_LOOP` with recommendation `dead loop`.
+- Rationale text is more specific for dynamic, small, moderate, large, nested, and dead-loop cases.
+- The updated server is running at `http://127.0.0.1:5001/`.
+
+**Problems encountered and fixes:**
+- Port 5000 became occupied by macOS Control Center after stopping the old Flask process. The refreshed server was started on port 5001.
+
+**Status:** Completed.
+
 ## Known Limitations
 
 - ScalarEvolution results depend on the IR shape, so the project intentionally runs a small canonicalization pipeline before the advisor.

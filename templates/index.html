@@ -19,7 +19,9 @@
       <section class="workspace">
         <div class="editor-panel">
           <label for="codeInput">C Source</label>
-          <textarea id="codeInput" spellcheck="false">void mixed(int n, int *arr, int A[8][8]) {
+          <div class="code-editor">
+            <pre id="lineNumbers" aria-hidden="true">1</pre>
+            <textarea id="codeInput" spellcheck="false">void mixed(int n, int *arr, int A[8][8]) {
   for (int i = 0; i < 16; i++) {
     arr[i] = i * 2;
   }
@@ -33,7 +35,12 @@
       A[i][j] = i + j;
     }
   }
+
+  for (int i = 0; i < 0; i++) {
+    arr[i] = i;
+  }
 }</textarea>
+          </div>
         </div>
 
         <div class="results-panel">

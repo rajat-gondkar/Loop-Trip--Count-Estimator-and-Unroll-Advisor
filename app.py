@@ -27,6 +27,18 @@ def run_command(args: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, text=True, capture_output=True, check=False)
 
 
+def display_location(location: str) -> str:
+    depth = ""
+    if " depth=" in location:
+        location, depth_value = location.split(" depth=", 1)
+        depth = f" (depth {depth_value})"
+
+    line = location.rsplit(":", 1)[-1]
+    if line.isdigit():
+        return f"Line {line}{depth}"
+    return f"{location}{depth}"
+
+
 def parse_pass_output(output: str) -> list[dict[str, Any]]:
     loops: list[dict[str, Any]] = []
     for raw_line in output.splitlines():
@@ -41,7 +53,7 @@ def parse_pass_output(output: str) -> list[dict[str, Any]]:
         location, trip_count, classification, recommendation, rationale = parts
         loops.append(
             {
-                "location": location,
+                "location": display_location(location),
                 "tripCount": None if trip_count == "-" else int(trip_count),
                 "classification": classification,
                 "recommendation": recommendation,
@@ -95,7 +107,7 @@ def analyze():
                 "-disable-output",
                 "-load-pass-plugin",
                 str(PLUGIN),
-                "-passes=function(mem2reg,instcombine,simplifycfg,loop-simplify,lcssa,indvars),loop-unroll-advisor",
+                "-passes=function(mem2reg,loop-simplify,lcssa,indvars),loop-unroll-advisor",
                 str(ir),
             ]
         )
@@ -106,4 +118,8 @@ def analyze():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=int(os.environ.get("PORT", "5000")))
+    app.run(
+        debug=os.environ.get("FLASK_DEBUG", "0") == "1",
+        port=int(os.environ.get("PORT", "5000")),
+        use_reloader=False,
+    )

@@ -59,15 +59,33 @@ std::string scevToString(const SCEV *Expr) {
 }
 
 std::string loopLocation(const Loop &L, StringRef FunctionName) {
+  auto LocationFromInstruction = [](Instruction &I) -> std::string {
+    if (const DebugLoc &DL = I.getDebugLoc()) {
+      if (const DILocation *Loc = DL.get()) {
+        if (Loc->getLine() == 0)
+          return "";
+
+        std::string File = Loc->getFilename().str();
+        if (File.empty())
+          File = Loc->getDirectory().str();
+        return File + ":" + std::to_string(Loc->getLine());
+      }
+    }
+    return "";
+  };
+
   if (BasicBlock *Header = L.getHeader()) {
     for (Instruction &I : *Header) {
-      if (const DebugLoc &DL = I.getDebugLoc()) {
-        if (const DILocation *Loc = DL.get()) {
-          std::string File = Loc->getFilename().str();
-          if (File.empty())
-            File = Loc->getDirectory().str();
-          return File + ":" + std::to_string(Loc->getLine());
-        }
+      std::string Location = LocationFromInstruction(I);
+      if (!Location.empty())
+        return Location;
+    }
+
+    for (BasicBlock *Block : L.blocks()) {
+      for (Instruction &I : *Block) {
+        std::string Location = LocationFromInstruction(I);
+        if (!Location.empty())
+          return Location;
       }
     }
 
@@ -84,6 +102,8 @@ std::string classifyLoop(const Loop &L, ScalarEvolution &SE, uint64_t &Count) {
     const APInt &Value = ConstantCount->getAPInt();
     if (!Value.isMaxValue()) {
       Count = Value.getZExtValue();
+      if (Count == 0)
+        return "DEAD_LOOP";
       return "EXACT_STATIC";
     }
   }
@@ -128,27 +148,33 @@ void chooseRecommendation(const Loop &L, uint64_t Count, StringRef BaseClass,
 
   if (BaseClass == "DYNAMIC") {
     Recommendation = "do not unroll";
-    Rationale = "Trip count not statically determinable";
+    Rationale = "Loop bound depends on runtime data, so a static unroll choice is not reliable";
+    return;
+  }
+
+  if (BaseClass == "DEAD_LOOP") {
+    Recommendation = "dead loop";
+    Rationale = "Loop condition is statically false, so the loop body never executes";
     return;
   }
 
   if (Count <= 8) {
     Recommendation = "unroll fully";
     Rationale = "Small static trip count (" + std::to_string(Count) +
-                "), full unroll eliminates loop overhead";
+                "), full unroll removes loop control overhead with limited code growth";
     return;
   }
 
   if (Count <= 32) {
     Recommendation = "unroll x4";
     Rationale = "Moderate trip count (" + std::to_string(Count) +
-                "), x4 unroll balances code size and ILP";
+                "), x4 exposes more instruction-level parallelism without excessive code size";
     return;
   }
 
   Recommendation = "do not unroll";
   Rationale = "Large trip count (" + std::to_string(Count) +
-              "), code size increase not justified";
+              "), aggressive unrolling would likely increase code size more than it helps";
 }
 
 LoopResult analyzeLoop(const Loop &L, ScalarEvolution &SE, StringRef FunctionName,

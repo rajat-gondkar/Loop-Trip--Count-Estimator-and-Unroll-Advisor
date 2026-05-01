@@ -1,5 +1,6 @@
 const analyzeButton = document.querySelector("#analyzeButton");
 const codeInput = document.querySelector("#codeInput");
+const lineNumbers = document.querySelector("#lineNumbers");
 const resultsBody = document.querySelector("#resultsBody");
 const statusText = document.querySelector("#statusText");
 const errorBox = document.querySelector("#errorBox");
@@ -13,6 +14,15 @@ function badgeClass(recommendation) {
 function setError(message) {
   errorBox.hidden = !message;
   errorBox.textContent = message || "";
+}
+
+function updateLineNumbers() {
+  const lineCount = codeInput.value.split("\n").length;
+  lineNumbers.textContent = Array.from({ length: lineCount }, (_, index) => index + 1).join("\n");
+}
+
+function syncLineNumberScroll() {
+  lineNumbers.scrollTop = codeInput.scrollTop;
 }
 
 function renderRows(loops) {
@@ -78,3 +88,7 @@ analyzeButton.addEventListener("click", async () => {
     analyzeButton.disabled = false;
   }
 });
+
+codeInput.addEventListener("input", updateLineNumbers);
+codeInput.addEventListener("scroll", syncLineNumberScroll);
+updateLineNumbers();
