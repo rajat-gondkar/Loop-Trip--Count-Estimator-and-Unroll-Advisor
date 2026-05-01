@@ -315,6 +315,33 @@ tests/c/large.c:2 | 1024 | EXACT_STATIC | do not unroll | Large trip count (1024
 
 **Status:** Completed.
 
+## Floating-Point Induction Update
+
+**Goal:** Decide how to handle loops controlled by floating-point induction variables.
+
+**Files changed or added:**
+- `src/LoopUnrollAdvisor.cpp`
+- `tests/c/float_iv.c`
+- `scripts/run_tests.sh`
+
+**Commands run:**
+- `cmake --build build`
+- `LLVM_BIN=/opt/homebrew/opt/llvm@17/bin ./scripts/run_tests.sh`
+- `curl -s -X POST http://127.0.0.1:5001/analyze ...`
+
+**Results observed:**
+- LLVM 17 ScalarEvolution can report a constant backedge count for the sample `float_iv` loop.
+- The loop still has a floating-point control PHI and no integer canonical induction variable.
+- The advisor now deliberately treats floating-point-controlled loops as `DYNAMIC` to avoid depending on fragile floating-point rounding behavior.
+
+**Sample result:**
+
+```text
+tests/c/float_iv.c:2 | - | DYNAMIC | do not unroll | Loop is controlled by a floating-point induction variable; treating it as dynamic avoids relying on fragile FP rounding behavior
+```
+
+**Status:** Completed.
+
 ## Known Limitations
 
 - ScalarEvolution results depend on the IR shape, so the project intentionally runs a small canonicalization pipeline before the advisor.

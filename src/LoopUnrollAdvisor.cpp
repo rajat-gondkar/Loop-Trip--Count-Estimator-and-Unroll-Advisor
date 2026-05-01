@@ -9,6 +9,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/IR/Type.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
@@ -26,6 +27,11 @@ struct LoopResult {
   std::string Classification;
   std::string Recommendation;
   std::string Rationale;
+};
+
+enum class SpecialLoopKind {
+  None,
+  FloatingPointControlled,
 };
 
 std::string sanitize(std::string Value) {
@@ -116,6 +122,19 @@ std::string classifyLoop(const Loop &L, ScalarEvolution &SE, uint64_t &Count) {
   return "DYNAMIC";
 }
 
+SpecialLoopKind detectSpecialLoopKind(const Loop &L) {
+  BasicBlock *Header = L.getHeader();
+  if (!Header)
+    return SpecialLoopKind::None;
+
+  for (const PHINode &Phi : Header->phis()) {
+    if (Phi.getType()->isFloatingPointTy())
+      return SpecialLoopKind::FloatingPointControlled;
+  }
+
+  return SpecialLoopKind::None;
+}
+
 const PHINode *findInductionVariable(const Loop &L, ScalarEvolution &SE) {
   if (const PHINode *CanonicalIV = L.getInductionVariable(SE))
     return CanonicalIV;
@@ -136,6 +155,7 @@ const PHINode *findInductionVariable(const Loop &L, ScalarEvolution &SE) {
 }
 
 void chooseRecommendation(const Loop &L, uint64_t Count, StringRef BaseClass,
+                          SpecialLoopKind SpecialKind,
                           std::string &Recommendation,
                           std::string &Rationale) {
   const bool IsNestedOuter = !L.getSubLoops().empty();
@@ -148,7 +168,13 @@ void chooseRecommendation(const Loop &L, uint64_t Count, StringRef BaseClass,
 
   if (BaseClass == "DYNAMIC") {
     Recommendation = "do not unroll";
-    Rationale = "Loop bound depends on runtime data, so a static unroll choice is not reliable";
+    if (SpecialKind == SpecialLoopKind::FloatingPointControlled) {
+      Rationale =
+          "Loop is controlled by a floating-point induction variable; treating it as dynamic avoids relying on fragile FP rounding behavior";
+    } else {
+      Rationale =
+          "Loop bound depends on runtime data, so a static unroll choice is not reliable";
+    }
     return;
   }
 
@@ -180,14 +206,19 @@ void chooseRecommendation(const Loop &L, uint64_t Count, StringRef BaseClass,
 LoopResult analyzeLoop(const Loop &L, ScalarEvolution &SE, StringRef FunctionName,
                        unsigned Depth) {
   uint64_t Count = 0;
-  std::string BaseClass = classifyLoop(L, SE, Count);
+  SpecialLoopKind SpecialKind = detectSpecialLoopKind(L);
+  std::string BaseClass =
+      SpecialKind == SpecialLoopKind::FloatingPointControlled
+          ? "DYNAMIC"
+          : classifyLoop(L, SE, Count);
   std::string Classification = BaseClass;
   if (!L.getSubLoops().empty())
     Classification += ",NESTED";
 
   std::string Recommendation;
   std::string Rationale;
-  chooseRecommendation(L, Count, BaseClass, Recommendation, Rationale);
+  chooseRecommendation(L, Count, BaseClass, SpecialKind, Recommendation,
+                       Rationale);
 
   const PHINode *IV = findInductionVariable(L, SE);
   std::string IVDebug = valueNameOrFallback(IV);
