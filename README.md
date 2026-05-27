@@ -1,106 +1,81 @@
 # Loop Unroll Advisor
 
-An out-of-tree LLVM pass that estimates loop trip counts with `LoopInfo` and `ScalarEvolution`, recommends whether to unroll each loop, and displays results in a small local web UI.
+Loop Unroll Advisor is an LLVM pass that estimates loop trip counts with LoopInfo and ScalarEvolution, classifies each loop, and recommends whether to `unroll fully`, `unroll x4`, or `do not unroll`. It can be used from the terminal or through the included Flask frontend.
 
-## Requirements
+## Prerequisites
 
-- LLVM 17+ with `clang`, `opt`, and `llvm-config`
-- CMake 3.20+
-- Python 3.10+
-- Flask
+- LLVM 17 or newer
+- CMake 3.20 or newer
+- Python 3.10 or newer
+- Flask, installed from `requirements.txt`
 
-On macOS with Homebrew, install LLVM if needed:
+Set `LLVM_BIN` to the folder that contains your LLVM tools (`clang`, `opt`, and `llvm-config`).
 
-```bash
-brew install llvm@17
-```
-
-If LLVM is not on `PATH`, export:
+Linux/macOS:
 
 ```bash
-export LLVM_BIN=/opt/homebrew/opt/llvm@17/bin
-export PATH="$LLVM_BIN:$PATH"
+export LLVM_BIN=/path/to/llvm/bin
 ```
 
-## Build The Pass
+Windows PowerShell:
+
+```powershell
+$env:LLVM_BIN="C:\path\to\llvm\bin"
+```
+
+## Build
 
 ```bash
-cmake -S . -B build -DLLVM_DIR="$LLVM_BIN/../lib/cmake/llvm"
-cmake --build build
+./scripts/build.sh
 ```
 
-The plugin is expected at:
-
-```text
-build/LoopUnrollAdvisor.so
-```
-
-## Run Tests
+## Use The Frontend
 
 ```bash
-LLVM_BIN="$LLVM_BIN" ./scripts/run_tests.sh
+./scripts/run.sh
 ```
 
-The script compiles files in `tests/c`, writes LLVM IR to `tests/ir`, writes pass output to `tests/results`, and checks the expected recommendations.
-
-## Run The Pass Manually
-
-```bash
-"$LLVM_BIN/clang" -O0 -g -Xclang -disable-O0-optnone -S -emit-llvm tests/c/mixed.c -o /tmp/mixed.ll
-"$LLVM_BIN/opt" -disable-output -load-pass-plugin build/LoopUnrollAdvisor.so \
-  -passes="function(mem2reg,loop-simplify,lcssa,indvars),loop-unroll-advisor" \
-  /tmp/mixed.ll
-```
-
-Output format:
-
-```text
-LOOP_LOCATION | TRIP_COUNT | CLASSIFICATION | RECOMMENDATION | RATIONALE
-```
-
-## Run The Web UI
-
-```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-LLVM_BIN="$LLVM_BIN" python app.py
-```
-
-Open:
+Then open:
 
 ```text
 http://127.0.0.1:5000
 ```
 
-## API
+The frontend lets you paste C code, analyze loops, and use the built-in test button to load and run sample test cases without typing terminal commands.
 
-`POST /analyze`
+## Run From Terminal
 
-Request:
-
-```json
-{ "code": "void f(int *a) { for (int i = 0; i < 16; i++) a[i] = i; }" }
+```bash
+LLVM_BIN="$LLVM_BIN" ./scripts/run_tests.sh
 ```
 
-Success response:
+The terminal may show debug lines from the LLVM pass while tests run. The readable output tables are saved as text files under:
 
-```json
-{
-  "loops": [
-    {
-      "location": "input.c:1",
-      "tripCount": 16,
-      "classification": "EXACT_STATIC",
-      "recommendation": "unroll x4",
-      "rationale": "Moderate trip count (16), x4 unroll balances code size and ILP"
-    }
-  ]
-}
+```text
+tests/results/
 ```
 
-Error response:
+For the most complete sample, open:
 
-```json
-{ "error": "Compilation failed." }
+```bash
+cat tests/results/mixed.txt
+```
+
+## Output Format
+
+```text
+LOOP_LOCATION | TRIP_COUNT | CLASSIFICATION | RECOMMENDATION | RATIONALE
+```
+
+## Repo Structure
+
+```text
+.
+├── src/
+├── scripts/
+├── tests/
+│   └── c/
+├── DESIGN.md
+├── IMPLEMENTATION.md
+└── EVALUATION.md
 ```

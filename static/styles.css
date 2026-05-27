@@ -41,6 +41,12 @@ body {
   margin-bottom: 20px;
 }
 
+.toolbar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 h1,
 h2,
 p {
@@ -75,6 +81,12 @@ button {
 button:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+.secondary-button {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--text);
 }
 
 .workspace {
@@ -259,5 +271,10 @@ th:nth-child(4) {
 
   button {
     width: 100%;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+    flex-direction: column;
   }
 }

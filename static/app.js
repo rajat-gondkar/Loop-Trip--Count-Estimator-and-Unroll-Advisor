@@ -1,9 +1,38 @@
 const analyzeButton = document.querySelector("#analyzeButton");
+const loadTestsButton = document.querySelector("#loadTestsButton");
 const codeInput = document.querySelector("#codeInput");
 const lineNumbers = document.querySelector("#lineNumbers");
 const resultsBody = document.querySelector("#resultsBody");
 const statusText = document.querySelector("#statusText");
 const errorBox = document.querySelector("#errorBox");
+
+const SIX_TESTS_SOURCE = `void simple_for(int *a) {
+  for (int i = 0; i < 16; i++) a[i] = i * 2;
+}
+
+void large_trip(float *a, float *b) {
+  for (int i = 0; i < 1024; i++) a[i] = b[i] * 3.14f;
+}
+
+void unknown_bound(int *a, int n) {
+  for (int i = 0; i < n; i++) a[i] += 1;
+}
+
+void nested_loop(int m[4][4]) {
+  for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 4; j++) m[i][j] = i + j;
+}
+
+typedef struct Node { int val; struct Node *next; } Node;
+int while_loop(Node *head) {
+  int sum = 0;
+  while (head) { sum += head->val; head = head->next; }
+  return sum;
+}
+
+void symbolic(int *a, int start, int end, int step) {
+  for (int i = start; i < end; i += step) a[i] = i;
+}`;
 
 function badgeClass(recommendation) {
   if (recommendation === "unroll fully") return "full";
@@ -62,8 +91,9 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-analyzeButton.addEventListener("click", async () => {
+async function analyzeCurrentCode() {
   analyzeButton.disabled = true;
+  loadTestsButton.disabled = true;
   statusText.textContent = "Analyzing...";
   setError("");
 
@@ -86,7 +116,17 @@ analyzeButton.addEventListener("click", async () => {
     statusText.textContent = "Error";
   } finally {
     analyzeButton.disabled = false;
+    loadTestsButton.disabled = false;
   }
+}
+
+analyzeButton.addEventListener("click", analyzeCurrentCode);
+
+loadTestsButton.addEventListener("click", async () => {
+  codeInput.value = SIX_TESTS_SOURCE;
+  updateLineNumbers();
+  syncLineNumberScroll();
+  await analyzeCurrentCode();
 });
 
 codeInput.addEventListener("input", updateLineNumbers);
