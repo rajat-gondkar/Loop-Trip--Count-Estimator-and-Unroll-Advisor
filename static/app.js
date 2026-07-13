@@ -5,6 +5,8 @@ const lineNumbers = document.querySelector("#lineNumbers");
 const resultsBody = document.querySelector("#resultsBody");
 const statusText = document.querySelector("#statusText");
 const errorBox = document.querySelector("#errorBox");
+const strategySelect = document.querySelector("#strategySelect");
+const strategyInfo = document.querySelector("#strategyInfo");
 
 const SIX_TESTS_SOURCE = `void simple_for(int *a) {
   for (int i = 0; i < 16; i++) a[i] = i * 2;
@@ -94,6 +96,7 @@ function escapeHtml(value) {
 async function analyzeCurrentCode() {
   analyzeButton.disabled = true;
   loadTestsButton.disabled = true;
+  strategySelect.disabled = true;
   statusText.textContent = "Analyzing...";
   setError("");
 
@@ -101,7 +104,10 @@ async function analyzeCurrentCode() {
     const response = await fetch("/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: codeInput.value }),
+      body: JSON.stringify({ 
+        code: codeInput.value,
+        strategy: strategySelect.value 
+      }),
     });
     const data = await response.json();
 
@@ -111,12 +117,19 @@ async function analyzeCurrentCode() {
 
     renderRows(data.loops || []);
     statusText.textContent = `${(data.loops || []).length} loop${(data.loops || []).length === 1 ? "" : "s"} found`;
+    
+    // Display strategy info
+    const strategyName = strategySelect.options[strategySelect.selectedIndex].text;
+    const thresholds = data.thresholds;
+    strategyInfo.textContent = `${strategyName} • Small: ≤${thresholds.small} • Medium: ≤${thresholds.medium}`;
   } catch (error) {
     setError(error.message);
     statusText.textContent = "Error";
+    strategyInfo.textContent = "";
   } finally {
     analyzeButton.disabled = false;
     loadTestsButton.disabled = false;
+    strategySelect.disabled = false;
   }
 }
 

@@ -154,6 +154,10 @@ const PHINode *findInductionVariable(const Loop &L, ScalarEvolution &SE) {
   return nullptr;
 }
 
+// Global threshold values (set via environment variables)
+static uint64_t SmallLoopThreshold = 8;
+static uint64_t MediumLoopThreshold = 32;
+
 void chooseRecommendation(const Loop &L, uint64_t Count, StringRef BaseClass,
                           SpecialLoopKind SpecialKind,
                           std::string &Recommendation,
@@ -184,14 +188,14 @@ void chooseRecommendation(const Loop &L, uint64_t Count, StringRef BaseClass,
     return;
   }
 
-  if (Count <= 8) {
+  if (Count <= SmallLoopThreshold) {
     Recommendation = "unroll fully";
     Rationale = "Small static trip count (" + std::to_string(Count) +
                 "), full unroll removes loop control overhead with limited code growth";
     return;
   }
 
-  if (Count <= 32) {
+  if (Count <= MediumLoopThreshold) {
     Recommendation = "unroll x4";
     Rationale = "Moderate trip count (" + std::to_string(Count) +
                 "), x4 exposes more instruction-level parallelism without excessive code size";
@@ -252,6 +256,14 @@ void collectLoops(const Loop &L, ScalarEvolution &SE, StringRef FunctionName,
 class LoopUnrollAdvisorPass : public PassInfoMixin<LoopUnrollAdvisorPass> {
 public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &MAM) {
+    // Read thresholds from environment variables
+    if (const char *SmallEnv = std::getenv("LOOP_UNROLL_SMALL_THRESHOLD")) {
+      SmallLoopThreshold = std::stoull(SmallEnv);
+    }
+    if (const char *MediumEnv = std::getenv("LOOP_UNROLL_MEDIUM_THRESHOLD")) {
+      MediumLoopThreshold = std::stoull(MediumEnv);
+    }
+
     auto &FAMProxy = MAM.getResult<FunctionAnalysisManagerModuleProxy>(M);
     FunctionAnalysisManager &FAM = FAMProxy.getManager();
 

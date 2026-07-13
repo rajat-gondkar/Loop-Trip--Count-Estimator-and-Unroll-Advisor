@@ -23,8 +23,11 @@ def tool(name: str) -> str:
 app = Flask(__name__)
 
 
-def run_command(args: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(args, text=True, capture_output=True, check=False)
+def run_command(args: list[str], env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    cmd_env = os.environ.copy()
+    if env:
+        cmd_env.update(env)
+    return subprocess.run(args, text=True, capture_output=True, check=False, env=cmd_env)
 
 
 def display_location(location: str) -> str:
@@ -51,6 +54,16 @@ def parse_pass_output(output: str) -> list[dict[str, Any]]:
             continue
 
         location, trip_count, classification, recommendation, rationale = parts
+        
+        # Extract line number for sorting
+        line_num = None
+        if "Line " in location:
+            try:
+                line_part = location.split("Line ")[1].split()[0]
+                line_num = int(line_part)
+            except (IndexError, ValueError):
+                pass
+        
         loops.append(
             {
                 "location": display_location(location),
@@ -58,8 +71,17 @@ def parse_pass_output(output: str) -> list[dict[str, Any]]:
                 "classification": classification,
                 "recommendation": recommendation,
                 "rationale": rationale,
+                "_lineNum": line_num,  # Internal sorting key
             }
         )
+    
+    # Sort by line number (None values go to the end)
+    loops.sort(key=lambda x: (x["_lineNum"] is None, x["_lineNum"] or 0))
+    
+    # Remove the internal sorting key before returning
+    for loop in loops:
+        del loop["_lineNum"]
+    
     return loops
 
 
@@ -72,8 +94,23 @@ def index():
 def analyze():
     payload = request.get_json(silent=True) or {}
     code = payload.get("code", "")
+    strategy = payload.get("strategy", "balanced")
+    
     if not isinstance(code, str) or not code.strip():
         return jsonify({"error": "Request must include non-empty C source in 'code'."}), 400
+
+    # Define threshold presets
+    thresholds = {
+        "conservative": {"small": 4, "medium": 16},
+        "balanced": {"small": 8, "medium": 32},
+        "aggressive": {"small": 16, "medium": 64},
+    }
+    
+    if strategy not in thresholds:
+        strategy = "balanced"
+    
+    small_threshold = thresholds[strategy]["small"]
+    medium_threshold = thresholds[strategy]["medium"]
 
     if not PLUGIN.exists():
         return jsonify({"error": f"LoopUnrollAdvisor plugin not found at {PLUGIN}."}), 500
@@ -101,6 +138,12 @@ def analyze():
         if compile_result.returncode != 0:
             return jsonify({"error": compile_result.stderr.strip() or "Compilation failed."}), 400
 
+        # Set environment variables for thresholds
+        env = {
+            "LOOP_UNROLL_SMALL_THRESHOLD": str(small_threshold),
+            "LOOP_UNROLL_MEDIUM_THRESHOLD": str(medium_threshold)
+        }
+
         pass_result = run_command(
             [
                 tool("opt"),
@@ -109,12 +152,17 @@ def analyze():
                 str(PLUGIN),
                 "-passes=function(mem2reg,loop-simplify,lcssa,indvars),loop-unroll-advisor",
                 str(ir),
-            ]
+            ],
+            env=env
         )
         if pass_result.returncode != 0:
             return jsonify({"error": pass_result.stderr.strip() or "LLVM pass failed."}), 500
 
-        return jsonify({"loops": parse_pass_output(pass_result.stdout)})
+        return jsonify({
+            "loops": parse_pass_output(pass_result.stdout),
+            "strategy": strategy,
+            "thresholds": {"small": small_threshold, "medium": medium_threshold}
+        })
 
 
 if __name__ == "__main__":

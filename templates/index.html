@@ -14,6 +14,14 @@
           <p>Analyze C loops with LLVM ScalarEvolution and get unroll recommendations.</p>
         </div>
         <div class="toolbar-actions">
+          <div class="strategy-selector">
+            <label for="strategySelect">Optimization Strategy</label>
+            <select id="strategySelect">
+              <option value="conservative">Conservative (4, 16)</option>
+              <option value="balanced" selected>Balanced (8, 32)</option>
+              <option value="aggressive">Aggressive (16, 64)</option>
+            </select>
+          </div>
           <button id="loadTestsButton" class="secondary-button" type="button">Run 6 Tests</button>
           <button id="analyzeButton" type="button">Analyze Loops</button>
         </div>
@@ -24,23 +32,29 @@
           <label for="codeInput">C Source</label>
           <div class="code-editor">
             <pre id="lineNumbers" aria-hidden="true">1</pre>
-            <textarea id="codeInput" spellcheck="false">void mixed(int n, int *arr, int A[8][8]) {
-  for (int i = 0; i < 16; i++) {
+            <textarea id="codeInput" spellcheck="false">void showcase_strategies(int *arr, int matrix[32][32]) {
+  for (int i = 0; i < 4; i++) {
     arr[i] = i * 2;
   }
 
-  for (int i = 0; i < n; i++) {
-    arr[i] = 0;
+  for (int i = 0; i < 6; i++) {
+    arr[i] = i + 10;
   }
 
-  for (int i = 0; i < 8; i++) {
-    for (int j = 0; j < 8; j++) {
-      A[i][j] = i + j;
-    }
+  for (int i = 0; i < 12; i++) {
+    arr[i] = i * 3;
   }
 
-  for (int i = 0; i < 0; i++) {
-    arr[i] = i;
+  for (int i = 0; i < 20; i++) {
+    arr[i] = arr[i] + 5;
+  }
+
+  for (int i = 0; i < 40; i++) {
+    arr[i] = i << 2;
+  }
+
+  for (int i = 0; i < 100; i++) {
+    arr[i] = arr[i] * arr[i];
   }
 }</textarea>
           </div>
@@ -49,7 +63,10 @@
         <div class="results-panel">
           <div class="results-header">
             <h2>Results</h2>
-            <span id="statusText">Ready</span>
+            <div class="results-meta">
+              <span id="strategyInfo" class="strategy-info"></span>
+              <span id="statusText">Ready</span>
+            </div>
           </div>
           <div id="errorBox" class="error" hidden></div>
           <div class="table-wrap">
