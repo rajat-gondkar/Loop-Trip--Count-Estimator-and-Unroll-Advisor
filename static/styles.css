@@ -149,6 +149,10 @@ textarea {
   color: #111827;
   background: transparent;
   font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: auto;
+  word-wrap: normal;
 }
 
 textarea:focus {
